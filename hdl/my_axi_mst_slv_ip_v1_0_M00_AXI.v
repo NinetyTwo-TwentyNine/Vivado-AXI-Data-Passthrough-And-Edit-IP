@@ -16,8 +16,10 @@
     // The master issues write data and accept read data where the width of the data bus is COM_AXI_DATA_WIDTH
 		parameter integer C_AXI_DATA_WIDTH	= 32,
 		
-		parameter [(C_AXI_ADDR_WIDTH-1):0] C_AXI_DATA_REPLACEMENT_ADDR = "0",
-        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_DATA_REPLACEMENT_VALUE = "0"
+		parameter [(C_AXI_ADDR_WIDTH-1):0] C_AXI_RDATA_REPLACEMENT_ADDR = "0",
+        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_RDATA_REPLACEMENT_VALUE = "0",
+        parameter [(C_AXI_ADDR_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_ADDR = "0",
+        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_VALUE = "0"
 	)
 	(
 		// Users to add ports here
@@ -147,6 +149,7 @@
         assign M_AXI_WSTRB = S_AXI_WSTRB;
         assign M_AXI_WVALID = S_AXI_WVALID;
         assign S_AXI_WREADY = M_AXI_WREADY;
+        // assign M_AXI_WDATA = S_AXI_WDATA;
         assign S_AXI_BRESP = M_AXI_BRESP;
         assign S_AXI_BVALID = M_AXI_BVALID;
         assign M_AXI_BREADY = S_AXI_BREADY;
@@ -154,28 +157,43 @@
         assign M_AXI_ARPROT = S_AXI_ARPROT;
         assign M_AXI_ARVALID = S_AXI_ARVALID;
         assign S_AXI_ARREADY = M_AXI_ARREADY;
-        assign S_AXI_RDATA = M_AXI_RDATA;
+        // assign S_AXI_RDATA = M_AXI_RDATA;
         assign S_AXI_RRESP = M_AXI_RRESP;
         assign S_AXI_RVALID = M_AXI_RVALID;
         assign M_AXI_RREADY = S_AXI_RREADY;
-
         
-        reg [C_AXI_DATA_WIDTH-1 : 0] actual_data;
-        assign M_AXI_WDATA = actual_data;
+        reg [C_AXI_DATA_WIDTH-1 : 0] actual_rdata;
+        assign S_AXI_RDATA = actual_rdata;
+        
+        reg [C_AXI_DATA_WIDTH-1 : 0] actual_wdata;
+        assign M_AXI_WDATA = actual_wdata;
         
         
-       always @(posedge M_AXI_ACLK)										      
+        always @(posedge S_AXI_ACLK)										      
 	  begin                                                                        
 	    // Initiates AXI transaction delay    
-	    if (M_AXI_AWADDR == C_AXI_DATA_REPLACEMENT_ADDR)                                            
+	    if (S_AXI_ARADDR == C_AXI_RDATA_REPLACEMENT_ADDR)                                            
 	      begin                                                                     
-            actual_data = C_AXI_DATA_REPLACEMENT_VALUE;
+            actual_rdata <= C_AXI_RDATA_REPLACEMENT_VALUE;
 	      end                                                                               
 	    else                                                                       
 	      begin  
-            actual_data = S_AXI_WDATA;
+            actual_rdata <= M_AXI_RDATA;
 	      end                                                                      
 	  end   
+        
+        always @(posedge M_AXI_ACLK)										      
+	  begin                                                                        
+	    // Initiates AXI transaction delay    
+	    if (M_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR)                                            
+	      begin                                                                     
+            actual_wdata <= C_AXI_WDATA_REPLACEMENT_VALUE;
+	      end                                                                               
+	    else                                                                       
+	      begin  
+            actual_wdata <= S_AXI_WDATA;
+	      end                                                                      
+	  end
         
         
 	endmodule
