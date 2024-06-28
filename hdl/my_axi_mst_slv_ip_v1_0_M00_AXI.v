@@ -18,8 +18,11 @@
 		
 		parameter [(C_AXI_ADDR_WIDTH-1):0] C_AXI_RDATA_REPLACEMENT_ADDR = "0",
         parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_RDATA_REPLACEMENT_VALUE = "0",
+        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_RDATA_REPLACEMENT_MASK = "0",
+        
         parameter [(C_AXI_ADDR_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_ADDR = "0",
-        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_VALUE = "0"
+        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_VALUE = "0",
+        parameter [(C_AXI_DATA_WIDTH-1):0] C_AXI_WDATA_REPLACEMENT_MASK = "0"
 	)
 	(
 		// Users to add ports here
@@ -27,7 +30,7 @@
 		// User ports ends
 		// Do not modify the ports beyond this line
 		
-				input wire  S_AXI_ACLK,
+		input wire  S_AXI_ACLK,
 		// Global Reset Signal. This Signal is Active LOW
 		input wire  S_AXI_ARESETN,
 		// Write address (issued by master, acceped by Slave)
@@ -174,7 +177,8 @@
 	    // Initiates AXI transaction delay    
 	    if (S_AXI_ARADDR == C_AXI_RDATA_REPLACEMENT_ADDR)                                            
 	      begin                                                                     
-            actual_rdata <= C_AXI_RDATA_REPLACEMENT_VALUE;
+            actual_rdata = ((M_AXI_RDATA & C_AXI_RDATA_REPLACEMENT_VALUE) | (M_AXI_RDATA & (~C_AXI_RDATA_REPLACEMENT_MASK)) | (C_AXI_RDATA_REPLACEMENT_MASK & C_AXI_RDATA_REPLACEMENT_VALUE));
+            //actual_rdata <= C_AXI_RDATA_REPLACEMENT_VALUE;
 	      end                                                                               
 	    else                                                                       
 	      begin  
@@ -185,9 +189,10 @@
         always @(posedge M_AXI_ACLK)										      
 	  begin                                                                        
 	    // Initiates AXI transaction delay    
-	    if (M_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR)                                            
+	    if (S_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR)                                            
 	      begin                                                                     
-            actual_wdata <= C_AXI_WDATA_REPLACEMENT_VALUE;
+            actual_wdata = ((S_AXI_WDATA & C_AXI_WDATA_REPLACEMENT_VALUE) | (S_AXI_WDATA & (~C_AXI_WDATA_REPLACEMENT_MASK)) | (C_AXI_WDATA_REPLACEMENT_MASK & C_AXI_WDATA_REPLACEMENT_VALUE));
+            //actual_wdata <= C_AXI_WDATA_REPLACEMENT_VALUE;
 	      end                                                                               
 	    else                                                                       
 	      begin  
