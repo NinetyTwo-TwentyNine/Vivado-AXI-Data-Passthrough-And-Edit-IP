@@ -211,14 +211,11 @@
 	
         assign M_AXI_AWADDR = S_AXI_AWADDR;
         assign M_AXI_AWPROT = S_AXI_AWPROT;
-        assign M_AXI_AWVALID = S_AXI_AWVALID;
-        assign S_AXI_AWREADY = M_AXI_AWREADY;
         assign M_AXI_WSTRB = S_AXI_WSTRB;
         // assign M_AXI_WDATA = S_AXI_WDATA;
         assign S_AXI_BRESP = M_AXI_BRESP;
         assign S_AXI_BVALID = M_AXI_BVALID;
         assign M_AXI_BREADY = S_AXI_BREADY;
-        assign M_AXI_ARADDR = S_AXI_ARADDR;
         assign M_AXI_ARPROT = S_AXI_ARPROT;
         assign M_AXI_ARVALID = S_AXI_ARVALID;
         assign S_AXI_ARREADY = M_AXI_ARREADY;
@@ -227,36 +224,70 @@
         assign S_AXI_RVALID = M_AXI_RVALID;
         assign M_AXI_RREADY = S_AXI_RREADY;
         
+//========================================Read setup========================================
         
-        assign M_AXI_WVALID = S_AXI_WVALID;
-//        reg m_axi_wvalid;
-//        assign M_AXI_WVALID = m_axi_wvalid;
+//        assign M_AXI_WVALID = S_AXI_WVALID;
+        reg m_axi_wvalid;
+        assign M_AXI_WVALID = m_axi_wvalid;
         
-        assign S_AXI_WREADY = M_AXI_WREADY;
-//        reg m_axi_wready;
-//        assign M_AXI_WREADY = m_axi_wready;
+//        assign S_AXI_WREADY = M_AXI_WREADY;
+        reg s_axi_wready;
+        assign S_AXI_WREADY = s_axi_wready;
+
+//        assign M_AXI_AWVALID = S_AXI_AWVALID;
+        reg m_axi_awvalid;
+        assign M_AXI_AWVALID = m_axi_awvalid;
         
-        // assign leds = C_AXI_WDATA_REPLACEMENT_VALUE;
+//        assign S_AXI_AWREADY = M_AXI_AWREADY;
+        reg s_axi_awready;
+        assign S_AXI_AWREADY = s_axi_awready;
+
+        wire read_rplc_slv_reg_wren;
+        assign read_rplc_slv_wren = M_AXI_WREADY && S_AXI_WVALID && M_AXI_AWREADY && S_AXI_AWVALID;
+        reg read_should_stop = 1'b0;
+        
+//        assign M_AXI_ARADDR = S_AXI_ARADDR;
+        reg [C_AXI_ADDR_WIDTH-1 : 0] actual_raddr;
+        assign M_AXI_ARADDR = actual_raddr;
         
         reg [C_AXI_DATA_WIDTH-1 : 0] actual_rdata;
         assign S_AXI_RDATA = actual_rdata;
         
+//========================================Write setup========================================
+        
         reg [C_AXI_DATA_WIDTH-1 : 0] actual_wdata;
-        assign M_AXI_WDATA = actual_wdata; 
+        assign M_AXI_WDATA = actual_wdata;
+        
+//========================================Main code========================================
         
         integer	 param1_index, param2_index;
+        
         
         always @(posedge S_AXI_ACLK)										      
 	  begin                                                                        
 	  	// Initiates AXI transaction delay    
-        actual_rdata <= M_AXI_RDATA;
-	    for (param1_index = 0; param1_index < C_AXI_RDATA_REPLACEMENT_AMOUNT; param1_index = param1_index + 1) begin
-	      if (S_AXI_ARADDR == (C_AXI_RDATA_REPLACEMENT_ADDR[param1_index +: C_AXI_ADDR_WIDTH]))                                            
-	        begin                                                                     
-              actual_rdata <= ((M_AXI_RDATA & (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index +: C_AXI_DATA_WIDTH])) | (M_AXI_RDATA & ~(C_AXI_RDATA_REPLACEMENT_MASK[param1_index +: C_AXI_DATA_WIDTH])) | ((C_AXI_RDATA_REPLACEMENT_MASK[param1_index +: C_AXI_DATA_WIDTH]) & (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index +: C_AXI_DATA_WIDTH])));
-              //actual_rdata <= C_AXI_RDATA_REPLACEMENT_VALUE;
+	  	if (read_rplc_slv_wren) begin
+	  	  read_should_stop <= 1'b1;
+	      for (param1_index = 0; param1_index < C_AXI_RDATA_REPLACEMENT_AMOUNT; param1_index = param1_index + 1) begin
+	        if (S_AXI_ARADDR == C_AXI_RDATA_REPLACEMENT_ADDR[param1_index +: C_AXI_ADDR_WIDTH]) begin                                    
+              actual_raddr <= C_AXI_RDATA_REPLACEMENT_ADDR[param1_index +: C_AXI_ADDR_WIDTH];
+              actual_rdata = ((M_AXI_RDATA & (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index +: C_AXI_DATA_WIDTH])) | (M_AXI_RDATA & ~(C_AXI_RDATA_REPLACEMENT_MASK[param1_index +: C_AXI_DATA_WIDTH])) | ((C_AXI_RDATA_REPLACEMENT_MASK[param1_index +: C_AXI_DATA_WIDTH]) & (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index +: C_AXI_DATA_WIDTH])));
+	          end
 	        end
-	      end 
+	      read_should_stop <= 1'b0;
+	      m_axi_wvalid <= 1'b1;
+          s_axi_wready <= 1'b1;
+          m_axi_awvalid <= 1'b1;
+          s_axi_awready <= 1'b1;
+	  	  end
+	  	else if (!read_should_stop) begin
+          m_axi_wvalid <= S_AXI_WVALID;
+          s_axi_wready <= M_AXI_WREADY;
+          m_axi_awvalid <= S_AXI_AWVALID;
+          s_axi_awready <= M_AXI_AWREADY;
+          actual_rdata <= M_AXI_RDATA;
+          actual_raddr <= S_AXI_ARADDR;
+	  	  end
 	  end   
         
         always @(posedge M_AXI_ACLK)										      
@@ -267,7 +298,6 @@
 	      if (S_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR[param2_index +: C_AXI_ADDR_WIDTH])                                            
 	        begin
               actual_wdata <= ((S_AXI_WDATA & (C_AXI_WDATA_REPLACEMENT_VALUE[param2_index +: C_AXI_DATA_WIDTH])) | (S_AXI_WDATA & ~(C_AXI_WDATA_REPLACEMENT_MASK[param2_index +: C_AXI_DATA_WIDTH])) | ((C_AXI_WDATA_REPLACEMENT_MASK[param2_index +: C_AXI_DATA_WIDTH]) & (C_AXI_WDATA_REPLACEMENT_VALUE[param2_index +: C_AXI_DATA_WIDTH])));
-              // m_axi_wvalid <= 1'b1; m_axi_wready <= 1'b1;
 	        end
 	      end
 	  end
