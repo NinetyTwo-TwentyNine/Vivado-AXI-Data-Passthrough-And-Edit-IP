@@ -10,13 +10,8 @@
 		parameter integer COM_AXI_DATA_WIDTH	= 32,
 		parameter integer COM_AXI_ADDR_WIDTH	= 32,
 
-        parameter [(COM_AXI_ADDR_WIDTH-1):0] AXI_RDATA_REPLACEMENT_ADDR = "0",
-        parameter [(COM_AXI_DATA_WIDTH-1):0] AXI_RDATA_REPLACEMENT_VALUE = "0",
-        parameter [(COM_AXI_DATA_WIDTH-1):0] AXI_RDATA_REPLACEMENT_MASK = "0",
-		
-        parameter [(COM_AXI_ADDR_WIDTH-1):0] AXI_WDATA_REPLACEMENT_ADDR = "0",
-        parameter [(COM_AXI_DATA_WIDTH-1):0] AXI_WDATA_REPLACEMENT_VALUE = "0",
-        parameter [(COM_AXI_DATA_WIDTH-1):0] AXI_WDATA_REPLACEMENT_MASK = "0",
+        parameter integer AXI_READ_RPLC_AMOUNT = 1,
+        parameter integer AXI_WRITE_RPLC_AMOUNT = 1,
 
 		// Parameters of Axi Slave Bus Interface S00_AXI
 		parameter integer C_S00_AXI_DATA_WIDTH	= COM_AXI_DATA_WIDTH,
@@ -31,7 +26,6 @@
 
 		// User ports ends
 		// Do not modify the ports beyond this line
-
 
 		// Ports of Axi Slave Bus Interface S00_AXI
 		input wire  s00_axi_aclk,
@@ -77,40 +71,38 @@
 		input wire [C_M00_AXI_DATA_WIDTH-1 : 0] m00_axi_rdata,
 		input wire [1 : 0] m00_axi_rresp,
 		input wire  m00_axi_rvalid,
-		output wire  m00_axi_rready
+		output wire  m00_axi_rready,
 		
-		// Common 00 AXI ports
-//		wire [C_M00_AXI_ADDR_WIDTH-1 : 0] c00_axi_awaddr,
-//		wire [2 : 0] c00_axi_awprot,
-//		wire  c00_axi_awvalid,
-//		wire  c00_axi_awready,
-//		wire [C_M00_AXI_DATA_WIDTH-1 : 0] c00_axi_wdata,
-//		wire [C_M00_AXI_DATA_WIDTH/8-1 : 0] c00_axi_wstrb,
-//		wire  c00_axi_wvalid,
-//		wire  c00_axi_wready,
-//		wire [1 : 0] c00_axi_bresp,
-//		wire  c00_axi_bvalid,
-//		wire  c00_axi_bready,
-//		wire [C_M00_AXI_ADDR_WIDTH-1 : 0] c00_axi_araddr,
-//		wire [2 : 0] c00_axi_arprot,
-//		wire  c00_axi_arvalid,
-//		wire  c00_axi_arready,
-//		wire [C_M00_AXI_DATA_WIDTH-1 : 0] c00_axi_rdata,
-//		wire [1 : 0] c00_axi_rresp,
-//		wire  c00_axi_rvalid,
-//		wire  c00_axi_rready
+		// Ports of Axi Slave Bus Interface S?_AXI
+		input wire  sc_axi_aclk,
+		input wire  sc_axi_aresetn,
+		input wire [C_S00_AXI_ADDR_WIDTH-1 : 0] sc_axi_awaddr,
+		input wire [2 : 0] sc_axi_awprot,
+		input wire  sc_axi_awvalid,
+		output wire  sc_axi_awready,
+		input wire [C_S00_AXI_DATA_WIDTH-1 : 0] sc_axi_wdata,
+		input wire [(C_S00_AXI_DATA_WIDTH/8)-1 : 0] sc_axi_wstrb,
+		input wire  sc_axi_wvalid,
+		output wire  sc_axi_wready,
+		output wire [1 : 0] sc_axi_bresp,
+		output wire  sc_axi_bvalid,
+		input wire  sc_axi_bready,
+		input wire [C_S00_AXI_ADDR_WIDTH-1 : 0] sc_axi_araddr,
+		input wire [2 : 0] sc_axi_arprot,
+		input wire  sc_axi_arvalid,
+		output wire  sc_axi_arready,
+		output wire [C_S00_AXI_DATA_WIDTH-1 : 0] sc_axi_rdata,
+		output wire [1 : 0] sc_axi_rresp,
+		output wire  sc_axi_rvalid,
+		input wire  sc_axi_rready
 	);
 
 // Instantiation of Axi Bus Interface M00_AXI
 	my_axi_mst_slv_ip_v1_0_M00_AXI # (
 		.C_AXI_ADDR_WIDTH(COM_AXI_ADDR_WIDTH),
 		.C_AXI_DATA_WIDTH(COM_AXI_DATA_WIDTH),
-		.C_AXI_RDATA_REPLACEMENT_ADDR(AXI_RDATA_REPLACEMENT_ADDR),
-		.C_AXI_RDATA_REPLACEMENT_VALUE(AXI_RDATA_REPLACEMENT_VALUE),
-		.C_AXI_RDATA_REPLACEMENT_MASK(AXI_RDATA_REPLACEMENT_MASK),
-		.C_AXI_WDATA_REPLACEMENT_ADDR(AXI_WDATA_REPLACEMENT_ADDR),
-		.C_AXI_WDATA_REPLACEMENT_VALUE(AXI_WDATA_REPLACEMENT_VALUE),
-		.C_AXI_WDATA_REPLACEMENT_MASK(AXI_WDATA_REPLACEMENT_MASK)
+		.C_AXI_RDATA_REPLACEMENT_AMOUNT(AXI_READ_RPLC_AMOUNT),
+		.C_AXI_WDATA_REPLACEMENT_AMOUNT(AXI_WRITE_RPLC_AMOUNT)
 	) my_axi_mst_slv_ip_v1_0_M00_AXI_inst (
 		.S_AXI_ACLK(s00_axi_aclk),
 		.S_AXI_ARESETN(s00_axi_aresetn),
@@ -154,7 +146,29 @@
 		.M_AXI_RDATA(m00_axi_rdata),
 		.M_AXI_RRESP(m00_axi_rresp),
 		.M_AXI_RVALID(m00_axi_rvalid),
-		.M_AXI_RREADY(m00_axi_rready)
+		.M_AXI_RREADY(m00_axi_rready),
+		
+		.SC_AXI_ACLK(sc_axi_aclk),
+		.SC_AXI_ARESETN(sc_axi_aresetn),
+		.SC_AXI_AWADDR(sc_axi_awaddr),
+		.SC_AXI_AWPROT(sc_axi_awprot),
+		.SC_AXI_AWVALID(sc_axi_awvalid),
+		.SC_AXI_AWREADY(sc_axi_awready),
+		.SC_AXI_WDATA(sc_axi_wdata),
+		.SC_AXI_WSTRB(sc_axi_wstrb),
+		.SC_AXI_WVALID(sc_axi_wvalid),
+		.SC_AXI_WREADY(sc_axi_wready),
+		.SC_AXI_BRESP(sc_axi_bresp),
+		.SC_AXI_BVALID(sc_axi_bvalid),
+		.SC_AXI_BREADY(sc_axi_bready),
+		.SC_AXI_ARADDR(sc_axi_araddr),
+		.SC_AXI_ARPROT(sc_axi_arprot),
+		.SC_AXI_ARVALID(sc_axi_arvalid),
+		.SC_AXI_ARREADY(sc_axi_arready),
+		.SC_AXI_RDATA(sc_axi_rdata),
+		.SC_AXI_RRESP(sc_axi_rresp),
+		.SC_AXI_RVALID(sc_axi_rvalid),
+		.SC_AXI_RREADY(sc_axi_rready)
 	);
 
 	// Add user logic here
