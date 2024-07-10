@@ -1,7 +1,7 @@
 
 `timescale 1 ns / 1 ps
 
-	module my_axi_mst_slv_ip_v1_0_M00_AXI #
+	module custom_axi_passthrough_ip_v1_0_M00_AXI #
 	(
 		// Users to add parameters here
 

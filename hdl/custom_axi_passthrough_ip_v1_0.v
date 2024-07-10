@@ -1,7 +1,7 @@
 
 `timescale 1 ns / 1 ps
 
-	module my_axi_mst_slv_ip_v1_0 #
+	module custom_axi_passthrough_ip_v1_0 #
 	(
 		// Users to add parameters here
 
@@ -77,13 +77,13 @@
 	);
 
 // Instantiation of Axi Bus Interface M00_AXI
-	my_axi_mst_slv_ip_v1_0_M00_AXI # (
+	custom_axi_passthrough_ip_v1_0_M00_AXI # (
 		.C_AXI_ADDR_WIDTH(COM_AXI_ADDR_WIDTH),
 		.C_AXI_DATA_WIDTH(COM_AXI_DATA_WIDTH),
 		.C_AXI_RDATA_REPLACEMENT_AMOUNT(AXI_READ_RPLC_AMOUNT),
 		.C_AXI_WDATA_REPLACEMENT_AMOUNT(AXI_WRITE_RPLC_AMOUNT),
 		.C_S_AXI_BASEADDR(C_S00_AXI_BASEADDR)
-	) my_axi_mst_slv_ip_v1_0_M00_AXI_inst (
+	) custom_axi_passthrough_ip_v1_0_M00_AXI_inst (
 		.S_AXI_ACLK(s00_axi_aclk),
 		.S_AXI_ARESETN(s00_axi_aresetn),
 		.S_AXI_AWADDR(s00_axi_awaddr),
