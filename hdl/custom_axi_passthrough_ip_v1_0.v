@@ -7,21 +7,17 @@
 
 		// User parameters ends
 		// Do not modify the parameters beyond this line
-		parameter integer COM_AXI_DATA_WIDTH	= 32,
-		parameter integer COM_AXI_ADDR_WIDTH	= 32,
-
         parameter integer AXI_READ_RPLC_AMOUNT = 1,
         parameter integer AXI_WRITE_RPLC_AMOUNT = 1,
 
 		// Parameters of Axi Slave Bus Interface S00_AXI
-		parameter integer C_S00_AXI_DATA_WIDTH	= COM_AXI_DATA_WIDTH,
-		parameter integer C_S00_AXI_ADDR_WIDTH	= COM_AXI_ADDR_WIDTH,
-
-		// Parameters of Axi Master Bus Interface M00_AXI
-		parameter integer C_M00_AXI_ADDR_WIDTH	= COM_AXI_ADDR_WIDTH,
-		parameter integer C_M00_AXI_DATA_WIDTH	= COM_AXI_DATA_WIDTH,
+		parameter integer C_S00_AXI_DATA_WIDTH	= 32,
+		parameter integer C_S00_AXI_ADDR_WIDTH	= 32,
 		
-		parameter [COM_AXI_ADDR_WIDTH-1:0] C_S00_AXI_BASEADDR = "0"
+		parameter [C_S00_AXI_DATA_WIDTH-1:0] C_S00_AXI_BASEADDR = "0",
+	
+		parameter integer C_M00_AXI_DATA_WIDTH	= 32,
+		parameter integer C_M00_AXI_ADDR_WIDTH	= 32	
 	)
 	(
 		// Users to add ports here
@@ -55,22 +51,22 @@
 		// Ports of Axi Master Bus Interface M00_AXI
 		input wire  m00_axi_aclk,
 		input wire  m00_axi_aresetn,
-		output wire [C_M00_AXI_ADDR_WIDTH-1 : 0] m00_axi_awaddr,
+		output wire [C_S00_AXI_ADDR_WIDTH-1 : 0] m00_axi_awaddr,
 		output wire [2 : 0] m00_axi_awprot,
 		output wire  m00_axi_awvalid,
 		input wire  m00_axi_awready,
-		output wire [C_M00_AXI_DATA_WIDTH-1 : 0] m00_axi_wdata,
-		output wire [C_M00_AXI_DATA_WIDTH/8-1 : 0] m00_axi_wstrb,
+		output wire [C_S00_AXI_DATA_WIDTH-1 : 0] m00_axi_wdata,
+		output wire [C_S00_AXI_DATA_WIDTH/8-1 : 0] m00_axi_wstrb,
 		output wire  m00_axi_wvalid,
 		input wire  m00_axi_wready,
 		input wire [1 : 0] m00_axi_bresp,
 		input wire  m00_axi_bvalid,
 		output wire  m00_axi_bready,
-		output wire [C_M00_AXI_ADDR_WIDTH-1 : 0] m00_axi_araddr,
+		output wire [C_S00_AXI_ADDR_WIDTH-1 : 0] m00_axi_araddr,
 		output wire [2 : 0] m00_axi_arprot,
 		output wire  m00_axi_arvalid,
 		input wire  m00_axi_arready,
-		input wire [C_M00_AXI_DATA_WIDTH-1 : 0] m00_axi_rdata,
+		input wire [C_S00_AXI_DATA_WIDTH-1 : 0] m00_axi_rdata,
 		input wire [1 : 0] m00_axi_rresp,
 		input wire  m00_axi_rvalid,
 		output wire  m00_axi_rready
@@ -78,8 +74,8 @@
 
 // Instantiation of Axi Bus Interface M00_AXI
 	custom_axi_passthrough_ip_v1_0_M00_AXI # (
-		.C_AXI_ADDR_WIDTH(COM_AXI_ADDR_WIDTH),
-		.C_AXI_DATA_WIDTH(COM_AXI_DATA_WIDTH),
+		.C_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH),
+		.C_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH),
 		.C_AXI_RDATA_REPLACEMENT_AMOUNT(AXI_READ_RPLC_AMOUNT),
 		.C_AXI_WDATA_REPLACEMENT_AMOUNT(AXI_WRITE_RPLC_AMOUNT),
 		.C_S_AXI_BASEADDR(C_S00_AXI_BASEADDR)

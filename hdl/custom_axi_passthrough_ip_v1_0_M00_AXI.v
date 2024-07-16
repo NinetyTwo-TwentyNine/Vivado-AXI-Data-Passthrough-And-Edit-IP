@@ -250,11 +250,11 @@
 	reg [C_AXI_DATA_WIDTH-1:0]	 reg_data_out;
 	reg	 aw_en;
 	
-	reg addr_read = 1'b1;
-    reg [2:0] role_pos;
+	reg addr_write = 1'b0;
     integer addr_pos;
+	reg [2:0] role_pos;
     
-    integer	 byte_index;
+    integer byte_index;
     
             
 	// Implement axi_awready generation
@@ -264,7 +264,7 @@
 	  
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -308,7 +308,7 @@
 
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -349,7 +349,22 @@
 
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (addr_write == 1'b1) begin
+        case(role_pos)
+        3'b000: C_AXI_RDATA_REPLACEMENT_ADDR[(C_AXI_ADDR_WIDTH * addr_pos) +: C_AXI_ADDR_WIDTH] <= slv_reg0;
+        3'b001: C_AXI_RDATA_REPLACEMENT_VALUE[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        3'b010: C_AXI_RDATA_REPLACEMENT_MASK1[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        3'b011: C_AXI_RDATA_REPLACEMENT_MASK2[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        3'b100: C_AXI_WDATA_REPLACEMENT_ADDR[(C_AXI_ADDR_WIDTH * addr_pos) +: C_AXI_ADDR_WIDTH] <= slv_reg0;
+        3'b101: C_AXI_WDATA_REPLACEMENT_VALUE[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        3'b110: C_AXI_WDATA_REPLACEMENT_MASK1[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        3'b111: C_AXI_WDATA_REPLACEMENT_MASK2[(C_AXI_DATA_WIDTH * addr_pos) +: C_AXI_DATA_WIDTH] <= slv_reg0;
+        endcase
+        
+        addr_write <= 1'b0;
+      end
+      
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 		  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -358,38 +373,19 @@
 	  else begin
 	    if (slv_reg_wren)
 	      begin
-	        for ( byte_index = 0; byte_index <= (C_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 ) begin
-	            if ( S_AXI_WSTRB[byte_index] == 1 ) begin
-	              // Respective byte enables are asserted as per write strobes 
-	              // Slave register 0
-	              slv_reg0[(byte_index*8) +: 8] = S_AXI_WDATA[(byte_index*8) +: 8];
-	            end
-	          end
+	        role_pos <= S_AXI_AWADDR[6+:3];
+            addr_pos <= S_AXI_AWADDR[2+:4];
+	        addr_write <= 1'b1;
 	        
-	        if (addr_read == 1'b1)
-	          begin
-	            addr_pos <= slv_reg0[0+:4];
-	            role_pos <= slv_reg0[4+:3];
-	            
-	            addr_read <= 1'b0;
+	        for ( byte_index = 0; byte_index <= (C_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 ) begin
+	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	            // Respective byte enables are asserted as per write strobes 
+	            // Slave register 0
+	            slv_reg0[(byte_index*8) +: 8] = S_AXI_WDATA[(byte_index*8) +: 8];
 	          end
-	        else
-	          begin
-	            case(role_pos)
-                3'b000: C_AXI_RDATA_REPLACEMENT_ADDR[addr_pos * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH] <= slv_reg0;
-                3'b001: C_AXI_RDATA_REPLACEMENT_VALUE[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                3'b010: C_AXI_RDATA_REPLACEMENT_MASK1[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                3'b011: C_AXI_RDATA_REPLACEMENT_MASK2[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                3'b100: C_AXI_WDATA_REPLACEMENT_ADDR[addr_pos * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH] <= slv_reg0;
-                3'b101: C_AXI_WDATA_REPLACEMENT_VALUE[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                3'b110: C_AXI_WDATA_REPLACEMENT_MASK1[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                3'b111: C_AXI_WDATA_REPLACEMENT_MASK2[addr_pos * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] <= slv_reg0;
-                endcase
-                
-                addr_read <= 1'b1;
-	          end
+	        end
 	      end
-	  end
+	    end
 	  
 	  end
 	end
@@ -403,7 +399,7 @@
 
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -447,7 +443,7 @@
 
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -484,7 +480,7 @@
 	// cleared to zero on reset (active low).  
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -531,7 +527,7 @@
 	// Output register or memory read data
 	always @( posedge S_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR == C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  
 	  if ( S_AXI_ARESETN == 1'b0 )
 	    begin
@@ -564,7 +560,7 @@
 	
     always @(posedge M_AXI_ACLK)										      
 	begin
-	  if (S_AXI_AWADDR != C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] != C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	  	
         actual_waddr <= S_AXI_AWADDR;
         actual_wdata <= S_AXI_WDATA;
@@ -579,7 +575,7 @@
 	
 	always @(posedge M_AXI_ACLK)
 	begin
-	  if (S_AXI_AWADDR != C_S_AXI_BASEADDR) begin
+	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] != C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
 	    
 	    // Still useful part
         m_axi_rready <= S_AXI_RREADY;
