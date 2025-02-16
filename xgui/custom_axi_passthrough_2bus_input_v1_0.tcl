@@ -3,8 +3,6 @@ proc init_gui { IPINST } {
   ipgui::add_param $IPINST -name "Component_Name"
   ipgui::add_param $IPINST -name "AXI_READ_RPLC_AMOUNT"
   ipgui::add_param $IPINST -name "AXI_WRITE_RPLC_AMOUNT"
-  set C_S00_AXI_BASEADDR [ipgui::add_param $IPINST -name "C_S00_AXI_BASEADDR"]
-  set_property tooltip {Where to write to edit data replacement parameters} ${C_S00_AXI_BASEADDR}
   ipgui::add_param $IPINST -name "C_S00_AXI_DATA_WIDTH" -widget comboBox
   ipgui::add_param $IPINST -name "C_S00_AXI_ADDR_WIDTH"
 
@@ -55,15 +53,6 @@ proc validate_PARAM_VALUE.C_S00_AXI_ADDR_WIDTH { PARAM_VALUE.C_S00_AXI_ADDR_WIDT
 	return true
 }
 
-proc update_PARAM_VALUE.C_S00_AXI_BASEADDR { PARAM_VALUE.C_S00_AXI_BASEADDR } {
-	# Procedure called to update C_S00_AXI_BASEADDR when any of the dependent parameters in the arguments change
-}
-
-proc validate_PARAM_VALUE.C_S00_AXI_BASEADDR { PARAM_VALUE.C_S00_AXI_BASEADDR } {
-	# Procedure called to validate C_S00_AXI_BASEADDR
-	return true
-}
-
 proc update_PARAM_VALUE.C_S00_AXI_DATA_WIDTH { PARAM_VALUE.C_S00_AXI_DATA_WIDTH } {
 	# Procedure called to update C_S00_AXI_DATA_WIDTH when any of the dependent parameters in the arguments change
 }
@@ -82,11 +71,6 @@ proc update_MODELPARAM_VALUE.AXI_READ_RPLC_AMOUNT { MODELPARAM_VALUE.AXI_READ_RP
 proc update_MODELPARAM_VALUE.AXI_WRITE_RPLC_AMOUNT { MODELPARAM_VALUE.AXI_WRITE_RPLC_AMOUNT PARAM_VALUE.AXI_WRITE_RPLC_AMOUNT } {
 	# Procedure called to set VHDL generic/Verilog parameter value(s) based on TCL parameter value
 	set_property value [get_property value ${PARAM_VALUE.AXI_WRITE_RPLC_AMOUNT}] ${MODELPARAM_VALUE.AXI_WRITE_RPLC_AMOUNT}
-}
-
-proc update_MODELPARAM_VALUE.C_S00_AXI_BASEADDR { MODELPARAM_VALUE.C_S00_AXI_BASEADDR PARAM_VALUE.C_S00_AXI_BASEADDR } {
-	# Procedure called to set VHDL generic/Verilog parameter value(s) based on TCL parameter value
-	set_property value [get_property value ${PARAM_VALUE.C_S00_AXI_BASEADDR}] ${MODELPARAM_VALUE.C_S00_AXI_BASEADDR}
 }
 
 proc update_MODELPARAM_VALUE.C_S00_AXI_DATA_WIDTH { MODELPARAM_VALUE.C_S00_AXI_DATA_WIDTH PARAM_VALUE.C_S00_AXI_DATA_WIDTH } {

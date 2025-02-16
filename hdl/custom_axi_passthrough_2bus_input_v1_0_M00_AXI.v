@@ -1,7 +1,7 @@
 
 `timescale 1 ns / 1 ps
 
-	module custom_axi_passthrough_ip_v1_0_M00_AXI #
+	module custom_axi_passthrough_2bus_input_v1_0_M00_AXI #
 	(
 		// Users to add parameters here
 
@@ -17,9 +17,7 @@
 		parameter integer C_AXI_DATA_WIDTH	= 32,
 		
 		parameter integer C_AXI_RDATA_REPLACEMENT_AMOUNT = 1,
-		parameter integer C_AXI_WDATA_REPLACEMENT_AMOUNT = 1,
-		
-		parameter [C_AXI_ADDR_WIDTH-1:0] C_S_AXI_BASEADDR = "0"
+		parameter integer C_AXI_WDATA_REPLACEMENT_AMOUNT = 1
 	)
 	(
 		// Users to add ports here
@@ -140,7 +138,67 @@
 		// Read valid. This signal indicates that the channel is signaling the required read data.
 		input wire  M_AXI_RVALID,
 		// Read ready. This signal indicates that the master can accept the read data and response information.
-		output wire  M_AXI_RREADY
+		output wire  M_AXI_RREADY,
+
+		input wire  SC_AXI_ACLK,
+		// Global Reset Signal. This Signal is Active LOW
+		input wire  SC_AXI_ARESETN,
+		// Write address (issued by master, acceped by Slave)
+		input wire [C_AXI_ADDR_WIDTH-1 : 0] SC_AXI_AWADDR,
+		// Write channel Protection type. This signal indicates the
+    		// privilege and security level of the transaction, and whether
+    		// the transaction is a data access or an instruction access.
+		input wire [2 : 0] SC_AXI_AWPROT,
+		// Write address valid. This signal indicates that the master signaling
+    		// valid write address and control information.
+		input wire  SC_AXI_AWVALID,
+		// Write address ready. This signal indicates that the slave is ready
+    		// to accept an address and associated control signals.
+		output wire  SC_AXI_AWREADY,
+		// Write data (issued by master, acceped by Slave) 
+		input wire [C_AXI_DATA_WIDTH-1 : 0] SC_AXI_WDATA,
+		// Write strobes. This signal indicates which byte lanes hold
+    		// valid data. There is one write strobe bit for each eight
+    		// bits of the write data bus.    
+		input wire [(C_AXI_DATA_WIDTH/8)-1 : 0] SC_AXI_WSTRB,
+		// Write valid. This signal indicates that valid write
+    		// data and strobes are available.
+		input wire  SC_AXI_WVALID,
+		// Write ready. This signal indicates that the slave
+    		// can accept the write data.
+		output wire  SC_AXI_WREADY,
+		// Write response. This signal indicates the status
+    		// of the write transaction.
+		output wire [1 : 0] SC_AXI_BRESP,
+		// Write response valid. This signal indicates that the channel
+    		// is signaling a valid write response.
+		output wire  SC_AXI_BVALID,
+		// Response ready. This signal indicates that the master
+    		// can accept a write response.
+		input wire  SC_AXI_BREADY,
+		// Read address (issued by master, acceped by Slave)
+		input wire [C_AXI_ADDR_WIDTH-1 : 0] SC_AXI_ARADDR,
+		// Protection type. This signal indicates the privilege
+    		// and security level of the transaction, and whether the
+    		// transaction is a data access or an instruction access.
+		input wire [2 : 0] SC_AXI_ARPROT,
+		// Read address valid. This signal indicates that the channel
+    		// is signaling valid read address and control information.
+		input wire  SC_AXI_ARVALID,
+		// Read address ready. This signal indicates that the slave is
+    		// ready to accept an address and associated control signals.
+		output wire  SC_AXI_ARREADY,
+		// Read data (issued by slave)
+		output wire [C_AXI_DATA_WIDTH-1 : 0] SC_AXI_RDATA,
+		// Read response. This signal indicates the status of the
+    		// read transfer.
+		output wire [1 : 0] SC_AXI_RRESP,
+		// Read valid. This signal indicates that the channel is
+    		// signaling the required read data.
+		output wire  SC_AXI_RVALID,
+		// Read ready. This signal indicates that the master can
+    		// accept the read data and response information.
+		input wire  SC_AXI_RREADY
 	);
 		reg [(C_AXI_ADDR_WIDTH*C_AXI_RDATA_REPLACEMENT_AMOUNT)-1:0] C_AXI_RDATA_REPLACEMENT_ADDR = "0";
         reg [(C_AXI_DATA_WIDTH*C_AXI_RDATA_REPLACEMENT_AMOUNT)-1:0] C_AXI_RDATA_REPLACEMENT_VALUE = "0";
@@ -206,8 +264,8 @@
  
 //========================================Everything else========================================
 
-// Still useful part
-
+// Just for the sake of similiar delay everywhere
+        
 //        assign S_AXI_BRESP = M_AXI_BRESP;
         reg [1 : 0] 	s_axi_bresp;
         assign S_AXI_BRESP	= s_axi_bresp;
@@ -219,8 +277,6 @@
 //        assign S_AXI_RRESP = M_AXI_RRESP;
         reg [1 : 0] 	s_axi_rresp;
         assign S_AXI_RRESP	= s_axi_rresp;
-        
-// Just for the sake of similiar delay everywhere
         
 //        assign M_AXI_AWPROT = S_AXI_AWPROT;
         reg [2 : 0] 	m_axi_awprot;
@@ -238,13 +294,73 @@
         reg [2 : 0] 	m_axi_arprot;
         assign M_AXI_ARPROT	= m_axi_arprot;
         
-//========================================Data read&replacement code========================================
+//========================================Data replacement code========================================
 
+    integer	 param1_index, param2_index; 
+
+      always @(posedge S_AXI_ACLK)										      
+	  begin                                                                        
+	  	// Initiates AXI transaction delay    
+        m_axi_wvalid <= S_AXI_WVALID;
+        s_axi_wready <= M_AXI_WREADY;
+        m_axi_awvalid <= S_AXI_AWVALID;
+        s_axi_awready <= M_AXI_AWREADY;
+        actual_raddr <= S_AXI_ARADDR;
+        actual_rdata <= M_AXI_RDATA;
+	    for (param1_index = 0; param1_index < C_AXI_RDATA_REPLACEMENT_AMOUNT; param1_index = param1_index + 1) begin
+	      if (S_AXI_ARADDR == C_AXI_RDATA_REPLACEMENT_ADDR[param1_index * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH]) begin                                    
+            actual_rdata <= ( (M_AXI_RDATA & ~C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & ~C_AXI_RDATA_REPLACEMENT_MASK2[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (~M_AXI_RDATA & C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_RDATA_REPLACEMENT_MASK2[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) );
+	        end
+	      end
+	  end   
+
+        always @(posedge M_AXI_ACLK)										      
+	  begin                                                                        
+	    // Initiates AXI transaction delay    
+        s_axi_rvalid <= M_AXI_RVALID;
+        m_axi_rready <= S_AXI_RREADY;
+        m_axi_arvalid <= S_AXI_ARVALID;
+        s_axi_arready <= M_AXI_ARREADY;
+        actual_waddr <= S_AXI_AWADDR;
+        actual_wdata <= S_AXI_WDATA;
+	    for (param2_index = 0; param2_index < C_AXI_WDATA_REPLACEMENT_AMOUNT; param2_index = param2_index + 1) begin
+	      if (S_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR[param2_index * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH]) begin
+            actual_wdata <= ( (S_AXI_WDATA & ~C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (C_AXI_WDATA_REPLACEMENT_VALUE[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & ~C_AXI_WDATA_REPLACEMENT_MASK2[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (~S_AXI_WDATA & C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_WDATA_REPLACEMENT_MASK2[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) );
+	        end
+	      end
+	  end
+	  
+      always @(posedge S_AXI_ACLK)										      
+	  begin 
+        s_axi_bresp <= M_AXI_BRESP;
+        s_axi_bvalid <= M_AXI_BVALID;
+        s_axi_rresp <= M_AXI_RRESP;
+        m_axi_awprot <= S_AXI_AWPROT;
+        m_axi_wstrb <= S_AXI_WSTRB;
+        m_axi_bready <= S_AXI_BREADY;
+        m_axi_arprot <= S_AXI_ARPROT;
+	  end
+	  
+//========================================Data read code========================================
+	
+	// AXI4LITE signals
+	reg [C_AXI_ADDR_WIDTH-1 : 0] 	sc_axi_awaddr;
+	reg  	sc_axi_awready;
+	reg  	sc_axi_wready;
+	reg [1 : 0] 	sc_axi_bresp;
+	reg  	sc_axi_bvalid;
+	reg [C_AXI_ADDR_WIDTH-1 : 0] 	sc_axi_araddr;
+	reg  	sc_axi_arready;
+	reg [C_AXI_DATA_WIDTH-1 : 0] 	sc_axi_rdata;
+	reg [1 : 0] 	sc_axi_rresp;
+	reg  	sc_axi_rvalid;
+	
+	// Example-specific design signals
 	//----------------------------------------------
 	//-- Signals for user logic register space example
 	//------------------------------------------------
-    reg [C_AXI_DATA_WIDTH-1:0]	slv_reg0;
-        
+	//-- Number of Slave Registers 1
+	reg [C_AXI_DATA_WIDTH-1:0]	slv_reg0;
 	wire	 slv_reg_rden;
 	wire	 slv_reg_wren;
 	reg [C_AXI_DATA_WIDTH-1:0]	 reg_data_out;
@@ -255,50 +371,68 @@
 	reg [2:0] role_pos;
     
     integer byte_index;
-    
-            
-	// Implement axi_awready generation
-	// axi_awready is asserted for one S_AXI_ACLK clock cycle when both
-	// S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_awready is
-	// de-asserted when reset is low.
-	  
-	always @( posedge S_AXI_ACLK )
+
+	// I/O Connections assignments
+
+
+	assign SC_AXI_AWREADY	= sc_axi_awready;
+	assign SC_AXI_WREADY	= sc_axi_wready;
+	assign SC_AXI_BRESP	= sc_axi_bresp;
+	assign SC_AXI_BVALID	= sc_axi_bvalid;
+	assign SC_AXI_ARREADY	= sc_axi_arready;
+	assign SC_AXI_RDATA	= sc_axi_rdata;
+	assign SC_AXI_RRESP	= sc_axi_rresp;
+	assign SC_AXI_RVALID	= sc_axi_rvalid;
+	
+	
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      s_axi_awready <= 1'b0;
+	      sc_axi_awready <= 1'b0;
 	      aw_en <= 1'b1;
 	    end 
 	  else
 	    begin    
-	      if (~s_axi_awready && S_AXI_AWVALID && S_AXI_WVALID && aw_en)
+	      if (~sc_axi_awready && SC_AXI_AWVALID && SC_AXI_WVALID && aw_en)
 	        begin
 	          // slave is ready to accept write address when 
 	          // there is a valid write address and write data
 	          // on the write address and data bus. This design 
 	          // expects no outstanding transactions. 
-	          s_axi_awready <= 1'b1;
+	          sc_axi_awready <= 1'b1;
 	          aw_en <= 1'b0;
 	        end
-	        else if (S_AXI_BREADY && s_axi_bvalid)
+	        else if (SC_AXI_BREADY && sc_axi_bvalid)
 	            begin
 	              aw_en <= 1'b1;
-	              s_axi_awready <= 1'b0;
+	              sc_axi_awready <= 1'b0;
 	            end
 	      else           
 	        begin
-	          s_axi_awready <= 1'b0;
+	          sc_axi_awready <= 1'b0;
 	        end
-	    end
-	    
-	    end
-	    else begin
-	    
-	      s_axi_awready <= M_AXI_AWREADY;
-	    
-	    end
+	    end 
+	end       
+
+	// Implement axi_awaddr latching
+	// This process is used to latch the address when both 
+	// S_AXI_AWVALID and S_AXI_WVALID are valid. 
+
+	always @( posedge SC_AXI_ACLK )
+	begin
+	  if ( SC_AXI_ARESETN == 1'b0 )
+	    begin
+	      sc_axi_awaddr <= 0;
+	    end 
+	  else
+	    begin    
+	      if (~sc_axi_awready && SC_AXI_AWVALID && SC_AXI_WVALID && aw_en)
+	        begin
+	          // Write Address latching 
+	          sc_axi_awaddr <= SC_AXI_AWADDR;
+	        end
+	    end 
 	end       
 
 	// Implement axi_wready generation
@@ -306,35 +440,26 @@
 	// S_AXI_AWVALID and S_AXI_WVALID are asserted. axi_wready is 
 	// de-asserted when reset is low. 
 
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      s_axi_wready <= 1'b0;
+	      sc_axi_wready <= 1'b0;
 	    end 
 	  else
 	    begin    
-	      if (~s_axi_wready && S_AXI_WVALID && S_AXI_AWVALID && aw_en )
+	      if (~sc_axi_wready && SC_AXI_WVALID && SC_AXI_AWVALID && aw_en )
 	        begin
 	          // slave is ready to accept write data when 
 	          // there is a valid write address and write data
 	          // on the write address and data bus. This design 
 	          // expects no outstanding transactions. 
-	          s_axi_wready <= 1'b1;
+	          sc_axi_wready <= 1'b1;
 	        end
 	      else
 	        begin
-	          s_axi_wready <= 1'b0;
+	          sc_axi_wready <= 1'b0;
 	        end
-	    end
-	    
-	    end
-	    else begin
-	    
-	      s_axi_wready <= M_AXI_WREADY;
-	    
 	    end 
 	end       
 
@@ -345,9 +470,9 @@
 	// These registers are cleared when reset (active low) is applied.
 	// Slave register write enable is asserted when valid address and data are available
 	// and the slave is ready to accept the write address and write data.
-	assign slv_reg_wren = s_axi_wready && S_AXI_WVALID && s_axi_awready && S_AXI_AWVALID;
+	assign slv_reg_wren = sc_axi_wready && SC_AXI_WVALID && sc_axi_awready && SC_AXI_AWVALID;
 
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
 	  if (addr_write == 1'b1) begin
         case(role_pos)
@@ -364,9 +489,7 @@
         addr_write <= 1'b0;
       end
       
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-		  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
 	      slv_reg0 <= 0;
 	    end 
@@ -377,16 +500,13 @@
             addr_pos <= S_AXI_AWADDR[2+:4];
 	        addr_write <= 1'b1;
 	        
-	        for ( byte_index = 0; byte_index <= (C_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 ) begin
-	          if ( S_AXI_WSTRB[byte_index] == 1 ) begin
+	        for ( byte_index = 0; byte_index <= (C_AXI_DATA_WIDTH/8)-1; byte_index = byte_index+1 )
+	          if ( SC_AXI_WSTRB[byte_index] == 1 ) begin
 	            // Respective byte enables are asserted as per write strobes 
 	            // Slave register 0
-	            slv_reg0[(byte_index*8) +: 8] = S_AXI_WDATA[(byte_index*8) +: 8];
+	            slv_reg0[(byte_index*8) +: 8] <= SC_AXI_WDATA[(byte_index*8) +: 8];
 	          end
-	        end
 	      end
-	    end
-	  
 	  end
 	end
 	
@@ -397,41 +517,31 @@
 	// This marks the acceptance of address and indicates the status of 
 	// write transaction.
 
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      s_axi_bvalid  <= 0;
-	      s_axi_bresp   <= 2'b0;
+	      sc_axi_bvalid  <= 0;
+	      sc_axi_bresp   <= 2'b0;
 	    end 
 	  else
 	    begin    
-	      if (s_axi_awready && S_AXI_AWVALID && ~s_axi_bvalid && s_axi_wready && S_AXI_WVALID)
+	      if (sc_axi_awready && SC_AXI_AWVALID && ~sc_axi_bvalid && sc_axi_wready && SC_AXI_WVALID)
 	        begin
 	          // indicates a valid write response is available
-	          s_axi_bvalid <= 1'b1;
-	          s_axi_bresp  <= 2'b0; // 'OKAY' response 
+	          sc_axi_bvalid <= 1'b1;
+	          sc_axi_bresp  <= 2'b0; // 'OKAY' response 
 	        end                   // work error responses in future
 	      else
 	        begin
-	          if (S_AXI_BREADY && s_axi_bvalid) 
+	          if (SC_AXI_BREADY && sc_axi_bvalid) 
 	            //check if bready is asserted while bvalid is high) 
 	            //(there is a possibility that bready is always asserted high)   
 	            begin
-	              s_axi_bvalid <= 1'b0; 
+	              sc_axi_bvalid <= 1'b0; 
 	            end  
 	        end
 	    end
-	    
-	  end
-	  else begin
-	  
-	    s_axi_bresp <= M_AXI_BRESP;
-	    s_axi_bvalid <= M_AXI_BVALID;
-	    
-	  end
 	end   
 
 	// Implement axi_arready generation
@@ -441,33 +551,27 @@
 	// The read address is also latched when S_AXI_ARVALID is 
 	// asserted. axi_araddr is reset to zero on reset assertion.
 
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      s_axi_arready <= 1'b0;
+	      sc_axi_arready <= 1'b0;
+	      sc_axi_araddr  <= 32'b0;
 	    end 
 	  else
 	    begin    
-	      if (~s_axi_arready && S_AXI_ARVALID)
+	      if (~sc_axi_arready && SC_AXI_ARVALID)
 	        begin
 	          // indicates that the slave has acceped the valid read address
-	          s_axi_arready <= 1'b1;
+	          sc_axi_arready <= 1'b1;
+	          // Read address latching
+	          sc_axi_araddr  <= SC_AXI_ARADDR;
 	        end
 	      else
 	        begin
-	          s_axi_arready <= 1'b0;
+	          sc_axi_arready <= 1'b0;
 	        end
-	    end
-	    
-	  end
-	  else begin
-
-        s_axi_arready <= M_AXI_ARREADY;
-        
-      end
+	    end 
 	end       
 
 	// Implement axi_arvalid generation
@@ -478,60 +582,45 @@
 	// bus and axi_rresp indicates the status of read transaction.axi_rvalid 
 	// is deasserted on reset (active low). axi_rresp and axi_rdata are 
 	// cleared to zero on reset (active low).  
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      s_axi_rvalid <= 0;
-	      s_axi_rresp  <= 0;
+	      sc_axi_rvalid <= 0;
+	      sc_axi_rresp  <= 0;
 	    end 
 	  else
 	    begin    
-	      if (s_axi_arready && S_AXI_ARVALID && ~s_axi_rvalid)
+	      if (sc_axi_arready && SC_AXI_ARVALID && ~sc_axi_rvalid)
 	        begin
 	          // Valid read data is available at the read data bus
-	          s_axi_rvalid <= 1'b1;
-	          s_axi_rresp  <= 2'b0; // 'OKAY' response
+	          sc_axi_rvalid <= 1'b1;
+	          sc_axi_rresp  <= 2'b0; // 'OKAY' response
 	        end   
-	      else if (s_axi_rvalid && S_AXI_RREADY)
+	      else if (sc_axi_rvalid && SC_AXI_RREADY)
 	        begin
 	          // Read data is accepted by the master
-	          s_axi_rvalid <= 1'b0;
+	          sc_axi_rvalid <= 1'b0;
 	        end                
 	    end
-	    
-	  end
-	  else begin
-	  
-        s_axi_rvalid <= M_AXI_RVALID;
-	    s_axi_rresp <= M_AXI_RRESP;
-	  
-	  end
 	end    
 
 	// Implement memory mapped register select and read logic generation
 	// Slave register read enable is asserted when valid address is available
 	// and the slave is ready to accept the read address.
-	assign slv_reg_rden = s_axi_arready & S_AXI_ARVALID & ~s_axi_rvalid;
+	assign slv_reg_rden = sc_axi_arready & SC_AXI_ARVALID & ~sc_axi_rvalid;
 	always @(*)
 	begin
 	      // Address decoding for reading registers
 	      reg_data_out <= slv_reg0;
 	end
-	
-	
-    integer	 param1_index, param2_index; 
 
 	// Output register or memory read data
-	always @( posedge S_AXI_ACLK )
+	always @( posedge SC_AXI_ACLK )
 	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] == C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  
-	  if ( S_AXI_ARESETN == 1'b0 )
+	  if ( SC_AXI_ARESETN == 1'b0 )
 	    begin
-	      actual_rdata  <= 0;
+	      sc_axi_rdata  <= 0;
 	    end 
 	  else
 	    begin    
@@ -540,56 +629,9 @@
 	      // output the read dada 
 	      if (slv_reg_rden)
 	        begin
-	          actual_rdata <= reg_data_out;     // register read data
+	          sc_axi_rdata <= reg_data_out;     // register read data
 	        end   
 	    end
-	    
-	  end
-	  else begin
-	  
-        actual_raddr <= S_AXI_ARADDR;
-        actual_rdata <= M_AXI_RDATA;
-	    for (param1_index = 0; param1_index < C_AXI_RDATA_REPLACEMENT_AMOUNT; param1_index = param1_index + 1) begin
-	      if (S_AXI_ARADDR == C_AXI_RDATA_REPLACEMENT_ADDR[param1_index * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH]) begin                                    
-            actual_rdata <= ( (M_AXI_RDATA & ~C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (C_AXI_RDATA_REPLACEMENT_VALUE[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & ~C_AXI_RDATA_REPLACEMENT_MASK2[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (~M_AXI_RDATA & C_AXI_RDATA_REPLACEMENT_MASK1[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_RDATA_REPLACEMENT_MASK2[param1_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) );
-	        end
-	      end
-        
-      end
-	end
-	
-    always @(posedge M_AXI_ACLK)										      
-	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] != C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	  	
-        actual_waddr <= S_AXI_AWADDR;
-        actual_wdata <= S_AXI_WDATA;
-	    for (param2_index = 0; param2_index < C_AXI_WDATA_REPLACEMENT_AMOUNT; param2_index = param2_index + 1) begin
-	      if (S_AXI_AWADDR == C_AXI_WDATA_REPLACEMENT_ADDR[param2_index * C_AXI_ADDR_WIDTH +: C_AXI_ADDR_WIDTH]) begin
-            actual_wdata <= ( (S_AXI_WDATA & ~C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (C_AXI_WDATA_REPLACEMENT_VALUE[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & ~C_AXI_WDATA_REPLACEMENT_MASK2[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) | (~S_AXI_WDATA & C_AXI_WDATA_REPLACEMENT_MASK1[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH] & C_AXI_WDATA_REPLACEMENT_MASK2[param2_index * C_AXI_DATA_WIDTH +: C_AXI_DATA_WIDTH]) );
-	        end
-	      end
-        
-      end
-	end
-	
-	always @(posedge M_AXI_ACLK)
-	begin
-	  if (S_AXI_AWADDR[9 +: (C_AXI_ADDR_WIDTH-9)] != C_S_AXI_BASEADDR[9 +: (C_AXI_ADDR_WIDTH-9)]) begin
-	    
-	    // Still useful part
-        m_axi_rready <= S_AXI_RREADY;
-        m_axi_arvalid <= S_AXI_ARVALID;
-        m_axi_wvalid <= S_AXI_WVALID;
-        m_axi_awvalid <= S_AXI_AWVALID;
-        
-        // Just for the sake of similiar delay everywhere
-        m_axi_bready <= S_AXI_BREADY;
-        m_axi_awprot <= S_AXI_AWPROT;
-        m_axi_arprot <= S_AXI_ARPROT;
-        m_axi_wstrb <= S_AXI_WSTRB;
-        
-      end
-	end
+	end    
 	
 	endmodule
